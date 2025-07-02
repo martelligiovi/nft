@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Foundry
+cache/
+out/
+
+# Environment variables
+.env
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Coverage reports
+coverage/
+lcov.info
+
+# Build artifacts
+artifacts/
+typechain/
+typechain-types/
+
+# Local development
+.cache/ 
