@@ -202,6 +202,51 @@ contract CCNFT is ERC721Enumerable, Ownable, ReentrancyGuard {
         removeFromArray(listTokensOnSale, tokenId);
     }
 
+    // Funcion de "reclamo" de NFTs
+    function claim(uint256[] calldata listTokenId) external nonReentrant {
+        require(canClaim, "Claiming no esta permitido");
+        require(listTokenId.length > 0 && listTokenId.length <= maxBatchCount, "Cantidad de tokens a reclamar invalida");
+        
+        uint256 claimValue = 0;
+        TokenSale storage tokenSale;
+        
+        for (uint256 i = 0; i < listTokenId.length; i++) {
+            require(_exists(listTokenId[i]), "Token no existe");
+            require(ownerOf(listTokenId[i]) == _msgSender(), "Solo la billetera Owner puede Claim");
+            
+            // Sumar el valor del token al claimValue acumulado
+            claimValue += values[listTokenId[i]];
+            // Resetear el valor del token a 0
+            values[listTokenId[i]] = 0;
+
+            // Acceso a la información de venta del token
+            tokenSale = tokensOnSale[listTokenId[i]];
+            // Desactivar el estado de venta
+            tokenSale.onSale = false;
+            tokenSale.price = 0;
+
+            // Remover el token de la lista de tokens en venta
+            removeFromArray(listTokensOnSale, listTokenId[i]);
+            
+            // Quemar el token, eliminándolo permanentemente de la circulación
+            _burn(listTokenId[i]);
+            
+            // Registrar el evento de claim
+            emit Claim(_msgSender(), listTokenId[i]);
+        }
+        
+        // Reducir el totalValue acumulado
+        totalValue -= claimValue;
+
+        // Calcular el monto total a transferir (claimValue + ganancia)
+        uint256 totalToTransfer = claimValue + (claimValue * profitToPay / 10000);
+        
+        // Transferir los fondos desde fundsCollector al usuario
+        if (!fundsToken.transferFrom(fundsCollector, _msgSender(), totalToTransfer)) {
+            revert("No se pueden enviar los fondos Claimiados");
+        }
+    }
+
     // ARRAYS - Funciones auxiliares para manejo de arrays
 
     // Verificar duplicados en el array antes de agregar un nuevo valor.
