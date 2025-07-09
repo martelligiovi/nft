@@ -16,20 +16,41 @@ contract CCNFT is ERC721Enumerable, Ownable, ReentrancyGuard {
 // Compra NFTs
     event Buy(address indexed buyer, uint256 indexed tokenId, uint256 value); 
 
+// Reclamamo NFTs.
+    event Claim(address indexed claimer, uint256 indexed tokenId);
+
+// Transferencia de NFT de un usuario a otro.
+    event Trade(address indexed buyer, address indexed seller, uint256 indexed tokenId, uint256 value);
+
+// Venta de un NFT.
+    event PutOnSale(uint256 indexed tokenId, uint256 price); 
+
     using Counters for Counters.Counter; 
+
+    // Estructura del estado de venta de un NFT.
+    struct TokenSale {
+        bool onSale;    // Indicamos si el NFT está en venta.
+        uint256 price;  // Indicamos el precio del NFT si está en venta.
+    }
 
     // State variables
     Counters.Counter private tokenIdTracker;
     mapping(uint256 => uint256) public values;
     mapping(uint256 => bool) public validValues;
+    mapping(uint256 => TokenSale) public tokensOnSale;
+    uint256[] public listTokensOnSale;
 
     address public fundsCollector;
     address public feesCollector;
     bool public canBuy;//false
+    bool public canClaim;
+    bool public canTrade;
     uint256 public totalValue;
     uint256 public maxValueToRaise;//1M BUSD
     uint16 public buyFee;//2.5%
+    uint16 public tradeFee;
     uint16 public maxBatchCount;//10
+    uint32 public profitToPay;
     IERC20 public fundsToken;
 
     constructor() ERC721("CCNFT", "CCNFT") {
@@ -109,6 +130,72 @@ contract CCNFT is ERC721Enumerable, Ownable, ReentrancyGuard {
         buyFee = _buyFee;
     }
 
+    function setProfitToPay(uint32 _profitToPay) external onlyOwner {
+        profitToPay = _profitToPay;
+    }
+
+    function setCanClaim(bool _canClaim) external onlyOwner {
+        canClaim = _canClaim;
+    }
+
+    function setCanTrade(bool _canTrade) external onlyOwner {
+        canTrade = _canTrade;
+    }
+
+    function setTradeFee(uint16 _tradeFee) external onlyOwner {
+        tradeFee = _tradeFee;
+    }
+
+    // Función para poner en venta un NFT.
+    function putOnSale(uint256 tokenId, uint256 price) external {
+        require(canTrade, "Trading no esta permitido");
+        require(_exists(tokenId), "Token no existe");
+        require(ownerOf(tokenId) == _msgSender(), "Solo el owner puede vender");
+        require(price > 0, "Precio debe ser mayor a 0");
+
+        TokenSale storage tokenSale = tokensOnSale[tokenId];
+        tokenSale.onSale = true;
+        tokenSale.price = price;
+
+        addToArray(listTokensOnSale, tokenId);
+        
+        emit PutOnSale(tokenId, price);
+    }
+
+    // Función para ver todos los tokens en venta
+    function getTokensOnSale() external view returns (uint256[] memory) {
+        return listTokensOnSale;
+    }
+
+    // ARRAYS - Funciones auxiliares para manejo de arrays
+
+    // Verificar duplicados en el array antes de agregar un nuevo valor.
+    function addToArray(uint256[] storage list, uint256 value) private {
+        uint256 index = find(list, value);
+        if (index == list.length) {
+            list.push(value);
+        }
+    }
+
+    // Eliminar un valor del array.
+    function removeFromArray(uint256[] storage list, uint256 value) private {
+        uint256 index = find(list, value);
+        if (index < list.length) {
+            list[index] = list[list.length - 1];
+            list.pop();
+        }
+    }
+
+    // Buscar un valor en un array y retornar su índice o la longitud del array si no se encuentra.
+    function find(uint256[] storage list, uint256 value) private view returns(uint256) {
+        for (uint256 i = 0; i < list.length; i++) {
+            if (list[i] == value) {
+                return i;
+            }
+        }
+        return list.length;
+    }
+
     // desabilita la transf, las 3 sig
     function transferFrom(address, address, uint256) 
         public 
@@ -141,4 +228,8 @@ contract CCNFT is ERC721Enumerable, Ownable, ReentrancyGuard {
     {
         super._beforeTokenTransfer(from, to, tokenId);
     }
+
+
+
+
 }
