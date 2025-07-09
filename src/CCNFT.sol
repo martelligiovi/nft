@@ -167,6 +167,41 @@ contract CCNFT is ERC721Enumerable, Ownable, ReentrancyGuard {
         return listTokensOnSale;
     }
 
+    // Funcion de compra de NFT que esta en venta.
+    function trade(uint256 tokenId) external nonReentrant {
+        require(canTrade, "Trading no esta permitido");
+        require(_exists(tokenId), "Token no existe");
+        require(ownerOf(tokenId) != _msgSender(), "Comprador es el Vendedor");
+
+        TokenSale storage tokenSale = tokensOnSale[tokenId];
+        require(tokenSale.onSale, "Token no esta en venta");
+
+        address seller = ownerOf(tokenId);
+        
+        // Transferencia del precio de venta del comprador al propietario actual del NFT
+        if (!fundsToken.transferFrom(_msgSender(), seller, tokenSale.price)) {
+            revert("No se pueden enviar los Fondos");
+        }
+
+        // Transferencia de tarifa de comercio del comprador al feesCollector
+        uint256 feeAmount = (tokenSale.price * tradeFee) / 10000;
+        if (!fundsToken.transferFrom(_msgSender(), feesCollector, feeAmount)) {
+            revert("No se puede enviar la Fee");
+        }
+
+        emit Trade(_msgSender(), seller, tokenId, tokenSale.price);
+
+        // Transferencia del NFT del propietario actual al comprador
+        _safeTransfer(seller, _msgSender(), tokenId, "");
+
+        // NFT no disponible para la venta
+        tokenSale.onSale = false;
+        tokenSale.price = 0;
+        
+        // Remover el tokenId de la lista de NFTs en venta
+        removeFromArray(listTokensOnSale, tokenId);
+    }
+
     // ARRAYS - Funciones auxiliares para manejo de arrays
 
     // Verificar duplicados en el array antes de agregar un nuevo valor.
