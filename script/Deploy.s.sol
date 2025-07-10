@@ -34,9 +34,29 @@ contract Deploy is Script {
         ccnft.addValidValues(1000 * 10**18);    // 1000 BUSD
         console.log("Valid NFT values added: 100, 500, 1000 BUSD");
 
-        // 6. Enable buying (this is usually done later, but for demo purposes)
+        // 6. Enable buying
         ccnft.setCanBuy(true);
         console.log("NFT buying enabled");
+
+        // 7. Enable trading
+        ccnft.setCanTrade(true);
+        console.log("NFT trading enabled");
+
+        // 8. Enable claiming
+        ccnft.setCanClaim(true);
+        console.log("NFT claiming enabled");
+
+        // 9. Set trading fee (2.5% = 250 basis points)
+        ccnft.setTradeFee(250);
+        console.log("Trading fee set to 2.5%");
+
+        // 10. Set profit to pay (10% = 1000 basis points)
+        ccnft.setProfitToPay(1000);
+        console.log("Profit to pay set to 10%");
+
+        // 11. Approve CCNFT contract to transfer BUSD for claims
+        busd.approve(address(ccnft), 100000000 * 10**18);  // 100M BUSD allowance
+        console.log("Owner approved CCNFT to transfer BUSD for claims");
 
         vm.stopBroadcast();
 
@@ -44,6 +64,8 @@ contract Deploy is Script {
         console.log("DEPLOYMENT SUMMARY:");
         console.log("BUSD Token:", address(busd));
         console.log("CCNFT Contract:", address(ccnft));
+        console.log("Trading Functions: ENABLED");
+        console.log("Claims: READY TO USE");
         console.log("========================================");
     }
 }
